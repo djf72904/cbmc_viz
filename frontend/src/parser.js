@@ -63,7 +63,13 @@ export function fmtValue(v) {
 export function parseCbmcTrace(json) {
   if (!Array.isArray(json)) throw new Error("Expected JSON array at root.");
   const resultBlock = json.find((x) => x && x.result);
-  if (!resultBlock) throw new Error("No 'result' block in this trace.");
+  if (!resultBlock) {
+    const cbmcError = json.find(
+      (x) => x && x.messageType === "ERROR" && x.messageText
+    );
+    if (cbmcError) throw new Error(`CBMC: ${cbmcError.messageText}`);
+    throw new Error("No 'result' block in this trace.");
+  }
   const result = (resultBlock.result || []).find((r) => r.trace) || resultBlock.result[0];
   if (!result || !Array.isArray(result.trace)) throw new Error("Result has no embedded 'trace'.");
 
