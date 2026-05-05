@@ -1,6 +1,34 @@
 #!/usr/bin/env bash
-# Extensive backend test suite for cbmc-viz.
+# Extensive backend API test suite for cbmc-viz.
 # Hits the Spring Boot backend directly on :8080.
+#
+# This file doubles as the API contract spec for the backend implementer.
+# Endpoints expected:
+#
+#   GET  /api/health
+#        -> 200 {ok:bool, cbmcAvailable:bool, cbmcVersion:string|null, error:string|null}
+#
+#   GET  /api/limits
+#        -> 200 {limits:{maxBytes,maxLines,maxNonBlankLines,maxFunctions,maxBraceDepth,maxLineLength},
+#                allowedIncludes:[..], blockedFeatures:[..], supportedFlags:[..]}
+#
+#   GET  /api/samples
+#        -> 200 {samples:[{name,title,description,flags}]}
+#
+#   GET  /api/samples/{name}
+#        -> 200 text/x-c (file body)
+#        -> 400 if not *.c
+#        -> 404 if missing
+#
+#   POST /api/analyze   (Content-Type: application/json)
+#        body: {source: <base64>, sourceName: "foo.c",
+#               flags: "--bounds-check,--pointer-check",
+#               entry: "main", unwind: 10}
+#        -> 200 {trace, sourceText, sourceName, stderr, exitCode,
+#                flagsUsed, entry, unwind}
+#        -> 400 missing/invalid source, unsupported flag
+#        -> 422 source rejected by complexity gate (with reasons[])
+#        -> 504 cbmc timeout
 
 set -uo pipefail
 
@@ -37,13 +65,32 @@ write_c() {
   echo "$f"
 }
 
-# Run /api/analyze and write status code + body to two files.
+# Run /api/analyze with a base64-encoded JSON body.
+# Args after the file are key=value pairs: flags=..., entry=..., unwind=...
 analyze() {
   local file="$1"; shift
-  local args=()
-  while (($#)); do args+=(-F "$1"); shift; done
+  local flags="" entry="" unwind=10
+  for a in "$@"; do
+    case "$a" in
+      flags=*)  flags="${a#flags=}"  ;;
+      entry=*)  entry="${a#entry=}"  ;;
+      unwind=*) unwind="${a#unwind=}" ;;
+    esac
+  done
+  local src
+  src=$(base64 < "$file" | tr -d '\n')
+  local payload
+  payload=$(jq -n \
+    --arg src "$src" \
+    --arg name "$(basename "$file")" \
+    --arg flags "$flags" \
+    --arg entry "$entry" \
+    --argjson unwind "$unwind" \
+    '{source:$src, sourceName:$name, flags:$flags, entry:$entry, unwind:$unwind}')
   curl -sS -o "$TMPDIR_T/body" -w "%{http_code}" -X POST \
-       -F "source=@${file}" "${args[@]}" "$BASE/api/analyze"
+       -H "Content-Type: application/json" \
+       --data-binary "$payload" \
+       "$BASE/api/analyze"
 }
 export -f analyze
 export TMPDIR_T BASE
@@ -269,11 +316,14 @@ check "blocked keyword inside string passes" \
 # ─────────────────────────────────────────────────────────────────────
 section "7. Input validation"
 
-check "no body -> 415 (multipart required)" \
-  bash -c '[[ $(curl -sS -o /dev/null -w "%{http_code}" -X POST '"$BASE"'/api/analyze) == 415 ]]'
+check "no body -> 4xx" \
+  bash -c 'code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" '"$BASE"'/api/analyze); [[ ${code:0:1} == 4 ]]'
 
-check "multipart without source -> 400" \
-  bash -c '[[ $(curl -sS -o /dev/null -w "%{http_code}" -X POST -F "flags=--bounds-check" '"$BASE"'/api/analyze) == 400 ]]'
+check "JSON without source field -> 400" \
+  bash -c 'code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "{\"flags\":\"--bounds-check\"}" '"$BASE"'/api/analyze); [[ $code == 400 ]]'
+
+check "non-base64 source -> 400" \
+  bash -c 'code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "{\"source\":\"!!! not base64 !!!\",\"sourceName\":\"x.c\"}" '"$BASE"'/api/analyze); [[ $code == 400 ]]'
 
 check "unsupported flag -> 400" \
   bash -c '

@@ -1,11 +1,24 @@
-export async function analyzeSource(file, { flags = [], entry = "", unwind = 10 } = {}) {
-  const form = new FormData();
-  form.append("source", file);
-  if (flags.length) form.append("flags", flags.join(","));
-  if (entry) form.append("entry", entry);
-  if (unwind) form.append("unwind", String(unwind));
+async function fileToBase64(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  return btoa(bin);
+}
 
-  const res = await fetch("/api/analyze", { method: "POST", body: form });
+export async function analyzeSource(file, { flags = [], entry = "", unwind = 10 } = {}) {
+  const payload = {
+    source: await fileToBase64(file),
+    sourceName: file.name,
+    flags: flags.join(","),
+    entry,
+    unwind,
+  };
+
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   let json;
   try {
     json = await res.json();
