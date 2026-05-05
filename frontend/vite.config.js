@@ -13,7 +13,7 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       "/api": {
-        target: process.env.CBMC_VIZ_API ?? "http://localhost:3017",
+        target: process.env.CBMC_VIZ_API ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },

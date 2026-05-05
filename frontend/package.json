@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n web,api -c cyan,magenta \"vite\" \"npm --prefix server run dev\"",
+    "dev": "concurrently -k -n web,api -c cyan,magenta \"vite\" \"cd ../backend && ./mvnw spring-boot:run\"",
     "dev:web": "vite",
-    "dev:api": "npm --prefix server run dev",
+    "dev:api": "cd ../backend && ./mvnw spring-boot:run",
     "build": "vite build",
     "preview": "vite preview"
   },
