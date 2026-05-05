@@ -231,9 +231,10 @@ public class ApiController {
             args.add(String.valueOf(unwind));
             if (flags.isEmpty()) args.add("--bounds-check");
             else args.addAll(flags);
-            if (!entry.isBlank()) {
+            String entryName = entry.trim().replaceAll("\\(\\s*\\)\\s*$", "");
+            if (!entryName.isBlank()) {
                 args.add("--function");
-                args.add(entry.trim());
+                args.add(entryName);
             }
 
             CbmcResult r = runCbmc(args, timeoutMs);
@@ -270,7 +271,7 @@ public class ApiController {
             resp.put("stderr", r.stderr().isBlank() ? null : r.stderr().trim());
             resp.put("exitCode", r.exitCode());
             resp.put("flagsUsed", flags);
-            resp.put("entry", entry.isBlank() ? null : entry.trim());
+            resp.put("entry", entryName.isBlank() ? null : entryName);
             resp.put("unwind", unwind);
             return ResponseEntity.ok(resp);
         } finally {
