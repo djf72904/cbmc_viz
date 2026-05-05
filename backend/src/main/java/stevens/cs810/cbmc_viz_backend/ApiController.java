@@ -3,6 +3,7 @@ package stevens.cs810.cbmc_viz_backend;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -142,7 +143,7 @@ public class ApiController {
         return Map.of("samples", samples);
     }
 
-    @GetMapping(value = "/samples/{name}", produces = "text/x-c;charset=UTF-8")
+    @GetMapping("/samples/{name}")
     public ResponseEntity<?> getSample(@PathVariable String name) throws IOException {
         String safe = Paths.get(name).getFileName().toString();
         if (!safe.toLowerCase().endsWith(".c")) {
@@ -152,7 +153,9 @@ public class ApiController {
         if (!Files.exists(p)) {
             return ResponseEntity.status(404).body(Map.of("error", "Sample not found: " + safe));
         }
-        return ResponseEntity.ok(Files.readString(p, StandardCharsets.UTF_8));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/x-c;charset=UTF-8"))
+                .body(Files.readString(p, StandardCharsets.UTF_8));
     }
 
     @GetMapping("/limits")
