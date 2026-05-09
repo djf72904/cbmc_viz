@@ -8,7 +8,7 @@ public class CbmcVizBackendApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(CbmcVizBackendApplication.class, args);
-        System.out.println("Server running on http://localhost:8080/home");
+        System.out.println("CBMC_Viz API running on http://localhost:8080");
     }
 
 }
