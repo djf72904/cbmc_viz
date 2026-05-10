@@ -6,7 +6,7 @@ public class AnalyzeRequest {
     public String sourceName;   //name of file
     public String flags;        //comma separated flags for cbmc
     public String entry;        //entry function name
-    public int unwind;          //loop unwind bound
+    public Integer unwind;          //loop unwind bound
 
     //empty constructor for Spring JSON deserialization to use
     public AnalyzeRequest(){};

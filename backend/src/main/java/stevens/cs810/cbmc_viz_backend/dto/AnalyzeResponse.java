@@ -24,7 +24,7 @@ public class AnalyzeResponse {
             int exitCode,
             List<String> flagsUsed,
             String entry,
-            int unwind ){
+            Integer unwind ){
 
         this.trace = trace;
         this.sourceText = sourceText;
