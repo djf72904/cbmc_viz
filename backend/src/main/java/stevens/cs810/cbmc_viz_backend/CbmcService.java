@@ -1,6 +1,7 @@
 package stevens.cs810.cbmc_viz_backend;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import stevens.cs810.cbmc_viz_backend.dto.*;
@@ -8,11 +9,14 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -258,6 +262,75 @@ public class CbmcService {
             return ResponseEntity.status(500).body(new GenericErrorResponse("CBMC failed to run", List.of(e.getMessage()), null, null));
         }
 
+    }
+
+    public ResponseEntity<?> samples() {
+
+        List<SampleInfo> samples = new ArrayList<>();
+
+        try {
+
+            Path samplesPath = Paths.get(samplesDir);
+
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(samplesPath, "*.c")) {
+
+                for (Path file : stream) {
+
+                    List<String> lines = Files.readAllLines(file);
+
+                    //Read comments for info about each sample
+                    String title = lines.get(0).replaceFirst("//", "").trim();
+                    String description = lines.get(1).replaceFirst("//", "").trim();
+                    String flags = lines.get(2).replaceFirst("//", "").trim();
+
+                    List<String> flagList = List.of(flags.split(","));
+
+                    samples.add(new SampleInfo(
+                            file.getFileName().toString(),
+                            title,
+                            description,
+                            flagList
+                    ));
+                }
+            }
+
+        }catch (Exception e) {
+            return ResponseEntity.status(500).body(new GenericErrorResponse("Could not fetch samples", null, null, null));
+        }
+
+        return ResponseEntity.status(200).body(Map.of("samples", samples));
+    }
+
+    public ResponseEntity<?> singleSample(String name){
+        String sourceName = name.trim();
+
+        //Check name is valid c file
+        if(!sourceName.endsWith(".c")){
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Source file name must end with '.c'", List.of(sourceName), null, null));
+        }
+
+        Path samplesPath = Paths.get(samplesDir).normalize();
+        Path samplePath = samplesPath.resolve(sourceName).normalize();
+
+        //Block path traversal
+        if (!samplePath.startsWith(samplesPath)) {
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Invalid sample path", List.of("Path traversal not allowed"), null, null));
+        }
+
+        //Check if sample exists
+        if (!Files.exists(samplePath)) {
+            return ResponseEntity.status(404).body(new GenericErrorResponse("Sample not found", null, null, null));
+        }
+
+        //Read file contents
+        String source;
+        try{
+            source = Files.readString(samplePath);
+        }catch(Exception e){
+            return ResponseEntity.status(500).body(new GenericErrorResponse("Error getting source code", null, null, null));
+        }
+
+        return ResponseEntity.status(200).contentType(MediaType.parseMediaType("text/x-c;charset=UTF-8"))   .body(source);
     }
 
 }
