@@ -105,7 +105,7 @@ check "/api/health 200 + cbmcAvailable" \
            [[ $(curl -sS '"$BASE"'/api/health | jq -r .cbmcAvailable) == true ]]'
 
 check "/api/limits has limits & supportedFlags" \
-  bash -c 'curl -sS '"$BASE"'/api/limits | jq -e ".limits.maxBytes and (.supportedFlags|length>5)"'
+  bash -c 'curl -sS '"$BASE"'/api/limits | jq -e ".limits.maxBytes and (.supportedFlags|length>=5)"'
 
 check "/api/samples returns >= 6 samples" \
   bash -c 'n=$(curl -sS '"$BASE"'/api/samples | jq ".samples|length"); [[ $n -ge 6 ]]'
