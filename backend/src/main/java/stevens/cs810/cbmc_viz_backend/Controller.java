@@ -9,7 +9,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:5181")
+@CrossOrigin(origins = "*")
 public class Controller {
 
     private final CbmcService cbmcService;

@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -205,12 +206,23 @@ public class CbmcService {
                 return ResponseEntity.status(500).body(new GenericErrorResponse(stderr, null, null, null));
             }
 
+            System.out.println("Passed running with no trace so now run with trace");
+
             //Now run with trace
             command.add("--trace");
             command.add("--json-ui");
             ProcessBuilder cbmcProcWithTrace = new ProcessBuilder(command);
             cbmcProcWithTrace.directory(tempDir.toFile());
             Process cbmcRunningWithTrace = cbmcProcWithTrace.start();
+
+            CompletableFuture<String> stdoutFuture = CompletableFuture.supplyAsync(() ->{
+                try{
+                    return new String(cbmcRunningWithTrace.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    return "";
+                }
+            });
+
             finished = cbmcRunningWithTrace.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
 
             if (!finished) {
@@ -218,7 +230,7 @@ public class CbmcService {
                 return ResponseEntity.status(504).body(new GenericErrorResponse("CBMC exceeded timeout of " + timeoutMs + "ms", null, null, null));
             }
 
-            stdout = new String(cbmcRunningWithTrace.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            stdout = stdoutFuture.get();
             exitCode = cbmcRunningWithTrace.exitValue();
 
             //convert stdout to JSON
