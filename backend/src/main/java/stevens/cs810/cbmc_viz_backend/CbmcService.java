@@ -3,9 +3,7 @@ package stevens.cs810.cbmc_viz_backend;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import stevens.cs810.cbmc_viz_backend.dto.AnalyzeRequest;
-import stevens.cs810.cbmc_viz_backend.dto.AnalyzeResponse;
-import stevens.cs810.cbmc_viz_backend.dto.HealthResponse;
+import stevens.cs810.cbmc_viz_backend.dto.*;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -96,13 +94,13 @@ public class CbmcService {
         //Check request has necessary fields
 
         if(request == null){
-            return ResponseEntity.status(400).body("Request Body missing");
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Request is empty", null, null, null));
         }
         if(request.source == null || request.source.trim().isEmpty()){
-            return ResponseEntity.status(400).body("Missing source code");
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Missing source code", null, null, null));
         }
         if(request.sourceName == null || request.sourceName.trim().isEmpty()) {
-            return ResponseEntity.status(400).body("Missing filename for code");
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Missing filename for code", null, null, null));
         }
 
         //Check if base64 is valid
@@ -111,15 +109,19 @@ public class CbmcService {
             byte[] decoded = Base64.getDecoder().decode(request.source);
             sourceText = new String(decoded, StandardCharsets.UTF_8);
         }catch(Exception e){
-            return ResponseEntity.status(400).body("Invalid base64: " + e.getMessage());
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Invalid base64", List.of(e.getMessage()), null, null));
         }
 
-        //sourceText = complexityCheck
+        try{
+            ComplexityGate.checkSource(sourceText);
+        }catch(Exception e){
+            return ResponseEntity.status(422).body(new ComplexityErrorResponse(List.of(e.getMessage()), ComplexityGate.getMetrics(sourceText), new LimitsResponse()));
+        }
 
         //Check sourceName
         String sourceName;
         if(!request.sourceName.trim().endsWith(".c")){
-            return ResponseEntity.status(400).body("Source file name must end with '.c'");
+            return ResponseEntity.status(400).body(new GenericErrorResponse("Source file name must end with '.c'", List.of(request.sourceName), null, null));
         }
         else{
             sourceName = request.sourceName.trim();
@@ -127,22 +129,26 @@ public class CbmcService {
         command.add(sourceName);
 
         //Make tmp directory to paste source text into new file named after sourceName
-        Path tempDir;
+        Path tempDir, sourceFile;
         try {
             tempDir = Files.createTempDirectory("cbmc-viz");
-            Path sourceFile = tempDir.resolve(sourceName);
+            sourceFile = tempDir.resolve(sourceName);
             Files.writeString(sourceFile, sourceText, StandardCharsets.UTF_8);
         }catch(Exception e){
-            return ResponseEntity.status(500).body("CBMC failed to run: " + e.getMessage());
+            return ResponseEntity.status(500).body(new GenericErrorResponse("CBMC failed to run", List.of(e.getMessage()), null, null));
         }
 
-
         //Check flags
-        List<String> flags = new ArrayList<>();
+        List<String> flags;
         if(request.flags == null){
+            flags = new ArrayList<>();
             flags.add("--bounds-check");
         }else{
-            //flags = complexityCheck
+            try{
+                flags = ComplexityGate.validateFlags(request.flags);
+            }catch(Exception e){
+                return ResponseEntity.status(400).body(new GenericErrorResponse("Flag in request not supported", List.of(e.getMessage()), null, null));
+            }
         }
         command.addAll(flags);
 
@@ -152,7 +158,7 @@ public class CbmcService {
             unwind = 10;
         }else{
             if(request.unwind < 1){
-                return ResponseEntity.status(400).body("Unwind cannot be less than 1");
+                return ResponseEntity.status(400).body(new GenericErrorResponse("Unwind cannot be less than 1", null, null, null));
             }
             else{
                 unwind = request.unwind;
@@ -167,7 +173,12 @@ public class CbmcService {
             entry = null;
         }
         else{
-            //entry == complexitycheck
+            try{
+                entry = ComplexityGate.validateEntry(request.entry, sourceText);
+            }catch (Exception e){
+                return ResponseEntity.status(400).body(new GenericErrorResponse("Issue with entry function", List.of(e.getMessage()), null, null));
+            }
+            command.add("--function");
             command.add(entry);
         }
 
@@ -177,41 +188,46 @@ public class CbmcService {
         int exitCode;
 
         try {
-            //first check it runs with no trace
+            //first check it runs with no trace and get stderror if it fails
 
             ProcessBuilder cbmcProcNoTrace = new ProcessBuilder(command);
             cbmcProcNoTrace.directory(tempDir.toFile());
-            cbmcProcNoTrace(tempDir.toFile());
-            cbmcProcNoTrace.start();
-            boolean finished = cbmcProcNoTrace.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+            Process cbmcRunningNoTrace = cbmcProcNoTrace.start();
+            boolean finished = cbmcRunningNoTrace.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
 
             if (!finished) {
-                cbmcProcNoTrace.destroyForcibly();
-                return ResponseEntity.status(504).body("CBMC exceeded timeout of " + timeoutMs + "ms");
+                cbmcRunningNoTrace.destroyForcibly();
+                return ResponseEntity.status(504).body(new GenericErrorResponse("CBMC exceeded timeout of " + timeoutMs + "ms", null, null, null));
             }
-            stderr = new String(cbmcProcNoTrace.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            stderr = new String(cbmcRunningNoTrace.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
 
             if(!stderr.isEmpty()){
-                return ResponseEntity.status(500).body(stderr);
+                return ResponseEntity.status(500).body(new GenericErrorResponse(stderr, null, null, null));
             }
 
             //Now run with trace
             command.add("--trace");
             command.add("--json-ui");
-            Process cbmcProcWithTrace = new ProcessBuilder(command).start();
-            finished = cbmcProcWithTrace.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+            ProcessBuilder cbmcProcWithTrace = new ProcessBuilder(command);
+            cbmcProcWithTrace.directory(tempDir.toFile());
+            Process cbmcRunningWithTrace = cbmcProcWithTrace.start();
+            finished = cbmcRunningWithTrace.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
 
             if (!finished) {
-                cbmcProcWithTrace.destroyForcibly();
-                return ResponseEntity.status(504).body("CBMC exceeded timeout of " + timeoutMs + "ms");
+                cbmcRunningWithTrace.destroyForcibly();
+                return ResponseEntity.status(504).body(new GenericErrorResponse("CBMC exceeded timeout of " + timeoutMs + "ms", null, null, null));
             }
 
-            stdout = new String(cbmcProcWithTrace.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            exitCode = cbmcProcWithTrace.exitValue();
+            stdout = new String(cbmcRunningWithTrace.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            exitCode = cbmcRunningWithTrace.exitValue();
 
             //convert stdout to JSON
             ObjectMapper mapper = new ObjectMapper();
             JsonNode trace = mapper.readTree(stdout);
+
+            //Delete temp file and dir
+            Files.deleteIfExists(sourceFile);
+            Files.deleteIfExists(tempDir);
 
             return ResponseEntity.status(200).body(
                     new AnalyzeResponse(
@@ -227,7 +243,7 @@ public class CbmcService {
 
         }
         catch (Exception e){
-            return ResponseEntity.status(500).body("CBMC failed to run: " + e.getMessage());
+            return ResponseEntity.status(500).body(new GenericErrorResponse("CBMC failed to run", List.of(e.getMessage()), null, null));
         }
 
     }

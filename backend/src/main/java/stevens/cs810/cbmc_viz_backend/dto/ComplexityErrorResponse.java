@@ -1,19 +1,18 @@
 package stevens.cs810.cbmc_viz_backend.dto;
 
 import java.util.List;
-import java.util.Map;
 
-public class ErrorResponse {
+public class ComplexityErrorResponse {
 
     public String error;                //Sent as message for 422 Error
     public List<String> reasons;        //Reasons for error
-    public Map<String, Object> metrics; //Metrics of file sent
-    public Map<String, Object> limits;  //Limits of program
+    public MetricsResponse metrics; //Metrics of file sent
+    public LimitsResponse limits;  //Limits of program
 
-    public ErrorResponse(
+    public ComplexityErrorResponse(
             List<String> reasons,
-            Map<String, Object> metrics,
-            Map<String, Object> limits){
+            MetricsResponse metrics,
+            LimitsResponse limits){
 
         this.error = "Source exceeds the project's complexity limits";
         this.reasons = reasons;

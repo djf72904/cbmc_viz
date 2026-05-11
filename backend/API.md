@@ -49,21 +49,19 @@ Static metadata describing what the backend will accept.
     "maxBraceDepth": 5,
     "maxLineLength": 240
   },
-  "allowedIncludes": ["assert.h", "limits.h", "math.h", "stdarg.h",
+  "allowedIncludes": ["assert.h", "ctype.h", "float.h","limits.h", "math.h", "stdarg.h",
                        "stdbool.h", "stddef.h", "stdint.h", "stdio.h",
                        "stdlib.h", "string.h"],
   "blockedFeatures": [
-    "struct definitions are not supported",
-    "union definitions are not supported",
-    "...",
+    "goto definitions are not supported",
+    "asm definitions are not supported",
+    "setjmp definitions are not supported",
+    "longjmp definitions are not supported",
     "variadic functions are not supported"
   ],
   "supportedFlags": [
-    "--bounds-check", "--conversion-check", "--div-by-zero-check",
-    "--float-overflow-check", "--memory-leak-check", "--nan-check",
-    "--pointer-check", "--pointer-overflow-check",
-    "--signed-overflow-check", "--undefined-shift-check",
-    "--unsigned-overflow-check"
+    "--bounds-check", "--div-by-zero-check", "--memory-leak-check",
+    "--pointer-check", "--signed-overflow-check"
   ]
 }
 ```

@@ -1,5 +1,6 @@
 package stevens.cs810.cbmc_viz_backend;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import stevens.cs810.cbmc_viz_backend.dto.*;
 
@@ -11,35 +12,20 @@ import java.util.Map;
 @CrossOrigin(origins = "http://localhost:5181")
 public class Controller {
 
+    private final CbmcService cbmcService;
+
+    public Controller(CbmcService cbmcService){
+        this.cbmcService = cbmcService;
+    }
+
     @GetMapping("/health")
     public HealthResponse health(){
-        return new HealthResponse(
-                true,
-                false,
-                null,
-                "STILL NEED IMPLEMENTATION"
-        );
+       return cbmcService.health();
     }
 
     @GetMapping("/limits")
-    public Map<String, Object> limits(){
-        return Map.of("limits", Map.of(
-                        "maxBytes", 16384,
-                        "maxLines", 200
-                ),
-
-                "allowedIncludes", List.of(
-                        "stdio.h",
-                        "stdlib.h"
-                ),
-
-                "blockedFeatures", List.of(
-                        "goto is not supported"
-                ),
-
-                "supportedFlags", List.of(
-                        "--bounds-check"
-                ));
+    public LimitsResponse limits(){
+        return new LimitsResponse();
     }
 
     @GetMapping("/samples")
@@ -63,16 +49,8 @@ public class Controller {
     }
 
     @PostMapping("/analyze")
-    public AnalyzeResponse analyze(@RequestBody AnalyzeRequest request){
-        return new AnalyzeResponse(
-                null,
-                "fake source",
-                request.sourceName,
-                null,
-                0,
-                List.of("--bounds-check"),
-                request.entry,
-                request.unwind);
+    public ResponseEntity<?> analyze(@RequestBody AnalyzeRequest request){
+        return cbmcService.analyze(request);
     }
 
 
