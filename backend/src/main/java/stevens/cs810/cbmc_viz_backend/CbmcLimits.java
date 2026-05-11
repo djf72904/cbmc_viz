@@ -36,17 +36,19 @@ public class CbmcLimits {
     );
 
     //blocked features
-    public static final Set<String> BLOCKED_KEYWORDS = Set.of(
+    public static final Set<String> BLOCKED_FEATURES = Set.of(
             "struct",
             "union",
             "enum",
             "typedef",
             "goto",
             "switch",
+            "function pointer",
             "extern",
             "static",
             "volatile",
-            "asm",
+            "assembly",
+            "variadic",
             "setjmp",
             "longjmp"
     );

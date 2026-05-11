@@ -171,7 +171,7 @@ public class ComplexityGate {
     }
 
     private static void checkBlockedFeatures(String cleaned) throws Exception {
-        for (String keyword : CbmcLimits.BLOCKED_KEYWORDS) {
+        for (String keyword : CbmcLimits.BLOCKED_FEATURES) {
 
             String pattern =
                     "(?s).*\\b"

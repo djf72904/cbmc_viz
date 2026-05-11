@@ -115,7 +115,7 @@ public class CbmcService {
         try{
             ComplexityGate.checkSource(sourceText);
         }catch(Exception e){
-            return ResponseEntity.status(422).body(new ComplexityErrorResponse(List.of(e.getMessage()), ComplexityGate.getMetrics(sourceText), new LimitsResponse()));
+            return ResponseEntity.status(422).body(new ComplexityErrorResponse(List.of(e.getMessage()), ComplexityGate.getMetrics(sourceText), (new LimitsResponse()).limits));
         }
 
         //Check sourceName
@@ -188,7 +188,7 @@ public class CbmcService {
         int exitCode;
 
         try {
-            //first check it runs with no trace and get stderror if it fails
+            //first check it runs with no trace and get stderr if it fails
 
             ProcessBuilder cbmcProcNoTrace = new ProcessBuilder(command);
             cbmcProcNoTrace.directory(tempDir.toFile());

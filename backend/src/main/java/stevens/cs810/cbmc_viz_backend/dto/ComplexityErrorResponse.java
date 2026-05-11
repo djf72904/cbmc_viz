@@ -7,12 +7,12 @@ public class ComplexityErrorResponse {
     public String error;                //Sent as message for 422 Error
     public List<String> reasons;        //Reasons for error
     public MetricsResponse metrics; //Metrics of file sent
-    public LimitsResponse limits;  //Limits of program
+    public LimitsResponse.Limits limits;  //Limits of program
 
     public ComplexityErrorResponse(
             List<String> reasons,
             MetricsResponse metrics,
-            LimitsResponse limits){
+            LimitsResponse.Limits limits){
 
         this.error = "Source exceeds the project's complexity limits";
         this.reasons = reasons;
