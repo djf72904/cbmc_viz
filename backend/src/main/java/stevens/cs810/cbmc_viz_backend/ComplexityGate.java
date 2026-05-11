@@ -165,12 +165,20 @@ public class ComplexityGate {
             String header = matcher.group(1);
 
             if (!CbmcLimits.ALLOWED_INCLUDES.contains(header)) {
-                throw new Exception("Include not allowed");
+                throw new Exception("Include not allowed: " + header);
             }
         }
     }
 
     private static void checkBlockedFeatures(String cleaned) throws Exception {
+
+        if (cleaned.contains("...")) {
+            throw new Exception("Unsupported C feature used: variadic");
+        }
+        if (cleaned.contains("__asm__") || cleaned.matches("(?s).*\\basm\\s*\\(.*")) {
+            throw new Exception("Unsupported C feature used: asm");
+        }
+
         for (String keyword : CbmcLimits.BLOCKED_FEATURES) {
 
             String pattern =

@@ -47,8 +47,8 @@ public class CbmcLimits {
             "extern",
             "static",
             "volatile",
-            "assembly",
-            "variadic",
+            "asm",
+            "__asm__",
             "setjmp",
             "longjmp"
     );
