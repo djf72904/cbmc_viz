@@ -1,12 +1,8 @@
 package stevens.cs810.cbmc_viz_backend;
 
-import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import stevens.cs810.cbmc_viz_backend.dto.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
