@@ -28,7 +28,7 @@ export async function analyzeSource(file, { flags = [], entry = "", unwind = 10 
     });
   }
   if (!res.ok) {
-    const detail = json?.detail ? ` — ${json.detail}` : "";
+    const detail = json?.detail ? `: ${json.detail}` : "";
     const hint = json?.hint ? ` (${json.hint})` : "";
     const err = new Error(
       `${json?.error ?? `HTTP ${res.status}`}${detail}${hint}`

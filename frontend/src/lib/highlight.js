@@ -1,6 +1,6 @@
 import { createHighlighter } from "shiki";
 
-const THEME = "github-dark-default";
+const THEME = "github-light";
 const LANGS = ["c", "cpp"];
 
 let highlighterPromise = null;
@@ -19,11 +19,6 @@ function detectLang(name) {
   return "c";
 }
 
-/**
- * Tokenize the given source with shiki and return an array of lines, each a
- * list of `{ text, color }` tokens. Returns null until the highlighter is ready
- * (caller should fall back to plain text in the meantime).
- */
 export async function tokenizeSource(text, fileName) {
   if (!text) return [];
   const hl = await getHighlighter();
