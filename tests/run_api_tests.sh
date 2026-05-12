@@ -97,7 +97,7 @@ export TMPDIR_T BASE
 
 section() { printf "\n%s\n" "$(bold "$*")"; }
 
-# ─────────────────────────────────────────────────────────────────────
+#
 section "1. GET endpoints"
 
 check "/api/health 200 + cbmcAvailable" \
@@ -122,8 +122,8 @@ check "/api/samples/foo.txt -> 400 (not .c)" \
 check "/api/samples path traversal blocked" \
   bash -c '[[ $(curl -sS -o /dev/null -w "%{http_code}" "'"$BASE"'/api/samples/..%2F..%2Fetc%2Fpasswd") -ne 200 ]]'
 
-# ─────────────────────────────────────────────────────────────────────
-section "2. CBMC verification — SUCCESS path"
+#
+section "2. CBMC verification: SUCCESS path"
 
 SAFE=$(write_c safe.c \
   '#include <assert.h>' \
@@ -137,8 +137,8 @@ check "safe sum verifies (exit 0, no FAILURE)" \
     [[ $code == 200 ]] || exit 1
     jq -e ".exitCode == 0 and (.trace|tostring|test(\"FAILURE\")|not)" '"$TMPDIR_T"'/body'
 
-# ─────────────────────────────────────────────────────────────────────
-section "3. CBMC verification — FAILURE path (each bug type)"
+#
+section "3. CBMC verification: FAILURE path (each bug type)"
 
 OOB=$(write_c oob.c \
   '#define N 4' \
@@ -185,7 +185,7 @@ check "memory leak caught" \
     analyze '"$LEAK"' flags=--memory-leak-check >/dev/null
     jq -e "tostring|test(\"FAILURE\")" '"$TMPDIR_T"'/body'
 
-# ─────────────────────────────────────────────────────────────────────
+#
 section "4. Multi-flag + entry + unwind"
 
 MULTI=$(write_c multi.c \
@@ -208,8 +208,8 @@ check "unwind=3 honored" \
     code=$(analyze '"$MULTI"' flags=--bounds-check unwind=3)
     [[ $code == 200 ]] && jq -e ".unwind==3" '"$TMPDIR_T"'/body'
 
-# ─────────────────────────────────────────────────────────────────────
-section "5. Complexity gate — each blocked feature → 422"
+#
+section "5. Complexity gate: blocked features return 422"
 
 expect_422_with_reason() {
   # expect_422_with_reason <name> <reason-substring> <C-source-as-args...>
@@ -262,8 +262,8 @@ expect_422_with_reason "blocks setjmp"       "setjmp" \
 expect_422_with_reason "blocks asm"          "assembly" \
   'int main(void){ __asm__("nop"); return 0; }'
 
-# ─────────────────────────────────────────────────────────────────────
-section "6. Complexity gate — limits"
+#
+section "6. Complexity gate: limits"
 
 # Too many lines
 many=$(printf 'int main(void){\n'; for i in $(seq 1 250); do printf '  int v%d=0;\n' $i; done; printf '  return 0; }\n')
@@ -297,7 +297,7 @@ check "allowed include passes" \
     code=$(analyze '"$TMPDIR_T"'/okinc.c flags=--bounds-check)
     [[ $code == 200 ]]'
 
-# Comment-stripped — typedef inside comment should NOT trip the gate
+# Comment-stripped: typedef inside comment should NOT trip the gate
 echo '/* typedef int x; */
 // goto not_a_label;
 int main(void){ return 0; }' > "$TMPDIR_T/incomment.c"
@@ -313,7 +313,7 @@ check "blocked keyword inside string passes" \
     code=$(analyze '"$TMPDIR_T"'/instring.c flags=--bounds-check)
     [[ $code == 200 ]]'
 
-# ─────────────────────────────────────────────────────────────────────
+#
 section "7. Input validation"
 
 check "no body -> 4xx" \
@@ -338,7 +338,7 @@ check "empty flag string falls back to default --bounds-check" \
 check "GET on /api/analyze rejected" \
   bash -c '[[ $(curl -sS -o /dev/null -w "%{http_code}" '"$BASE"'/api/analyze) -ne 200 ]]'
 
-# ─────────────────────────────────────────────────────────────────────
+#
 section "Summary"
 TOTAL=$((PASS+FAIL))
 if (( FAIL == 0 )); then
