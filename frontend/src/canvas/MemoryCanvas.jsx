@@ -10,14 +10,9 @@ const SCALAR_BOX_H = 70;
 const SCALAR_GAP = 18;
 const SCALAR_ROW_GAP = 14;
 
-// Geometry per array row:
-//   y          : section label "X[N] · ARRAY MEMORY"
-//   y + 28     : VALID/OOB bracket
-//   y + 60     : top of cells, height = cellH
-//   y + 60 + cellH + 22 : cell index labels [0]..[N]
 const ARRAY_LABEL_TO_CELLS = 60;
-const ARRAY_INDEX_PAD = 28;     // space between cell bottom and [n] label
-const ARRAY_ROW_TRAILING = 36;  // space below the [n] labels before the next section
+const ARRAY_INDEX_PAD = 28;
+const ARRAY_ROW_TRAILING = 36;
 
 function cellGeometry(N) {
   const slotCount = N + 1;
@@ -111,7 +106,7 @@ export function MemoryCanvas({ parsed, currentStep, isFail }) {
   return (
     <div
       ref={containerRef}
-      className="relative"
+      className="relative bg-card rounded-lg border border-[var(--rule)]"
       onMouseLeave={handleLeave}
     >
     <svg
@@ -131,7 +126,7 @@ export function MemoryCanvas({ parsed, currentStep, isFail }) {
             y1="0"
             x2="0"
             y2="6"
-            className="stroke-[color:var(--color-border)]"
+            className="stroke-[var(--rule)]"
             strokeWidth="1"
           />
         </pattern>
@@ -147,7 +142,7 @@ export function MemoryCanvas({ parsed, currentStep, isFail }) {
             y1="0"
             x2="0"
             y2="6"
-            className="stroke-[var(--trace-fail)]"
+            className="stroke-[var(--state-failed)]"
             strokeWidth="1.4"
           />
         </pattern>
@@ -159,9 +154,9 @@ export function MemoryCanvas({ parsed, currentStep, isFail }) {
           y={totalH / 2}
           textAnchor="middle"
           fontSize="13"
-          className="fill-[color:var(--color-muted-foreground)]"
+          className="fill-[var(--ink-muted)]"
         >
-          (no variables observed yet — step forward)
+          (no variables yet, step forward)
         </text>
       )}
 
@@ -188,17 +183,16 @@ export function MemoryCanvas({ parsed, currentStep, isFail }) {
             y1={SCALAR_ROW_Y - 18}
             x2={W - X_PAD_RIGHT}
             y2={SCALAR_ROW_Y - 18}
-            className="stroke-[color:var(--color-border)]"
+            className="stroke-[var(--rule)]"
             strokeWidth="1"
           />
           <text
             x={X0}
             y={SCALAR_ROW_Y - 26}
-            fontSize="10"
-            letterSpacing="3"
-            className="fill-[color:var(--color-muted-foreground)]"
+            fontSize="11"
+            className="fill-[var(--ink-muted)]"
           >
-            SCALARS &amp; POINTERS
+            scalars &amp; pointers
           </text>
           <ScalarGrid
             y={SCALAR_ROW_Y}
@@ -241,11 +235,10 @@ function ArrayRow({ y, arr, isFail, activeIdx }) {
       <text
         x={X0}
         y={y}
-        fontSize="10"
-        letterSpacing="3"
-        className="fill-[color:var(--color-muted-foreground)]"
+        fontSize="11"
+        className="fill-[var(--ink-muted)]"
       >
-        {`${arr.name.toUpperCase()}[${N}]   ·   ARRAY MEMORY`}
+        {`${arr.name}[${N}] · array memory`}
       </text>
 
       <ValidBracket x1={validX1} x2={validX2} y={y + 28} N={N} />
@@ -328,23 +321,23 @@ function ScalarBox({ x, y, w, h, item, active, fail, hovered, onHover }) {
   const kind = item.kind;
   const value = item.current ? fmtValue(item.current) : "—";
 
-  let strokeClass = "stroke-[color:var(--color-border)]";
-  let fillClass = "fill-transparent";
-  let textClass = "fill-[color:var(--color-foreground)]";
-  let lblClass = "fill-[color:var(--color-muted-foreground)]";
+  let strokeClass = "stroke-[var(--rule)]";
+  let fillClass = "fill-[var(--paper)]";
+  let textClass = "fill-[var(--ink)]";
+  let lblClass = "fill-[var(--ink-muted)]";
 
   if (fail) {
-    strokeClass = "stroke-[var(--trace-fail)]";
-    fillClass = "fill-[var(--trace-fail-soft)]";
-    textClass = "fill-[var(--trace-fail)]";
-    lblClass = "fill-[var(--trace-fail)]";
+    strokeClass = "stroke-[var(--state-failed)]";
+    fillClass = "fill-[color:color-mix(in_oklch,var(--state-failed)_10%,var(--paper))]";
+    textClass = "fill-[var(--state-failed)]";
+    lblClass = "fill-[var(--state-failed)]";
   } else if (active) {
-    strokeClass = "stroke-amber";
-    fillClass = "fill-amber-soft";
-    textClass = "fill-amber";
-    lblClass = "fill-amber";
+    strokeClass = "stroke-[var(--brand)]";
+    fillClass = "fill-[color:color-mix(in_oklch,var(--brand)_10%,var(--paper))]";
+    textClass = "fill-[var(--brand)]";
+    lblClass = "fill-[var(--brand)]";
   } else if (hovered) {
-    strokeClass = "stroke-foreground/60";
+    strokeClass = "stroke-[var(--ink)]/60";
   }
 
   const valueChars = Math.max(3, Math.floor((w - 32) / 13));
@@ -369,8 +362,8 @@ function ScalarBox({ x, y, w, h, item, active, fail, hovered, onHover }) {
           width={w}
           height={h}
           rx="8"
-          className={fail ? "fill-[var(--trace-fail)]" : "fill-amber"}
-          opacity="0.18"
+          className={fail ? "fill-[var(--state-failed)]" : "fill-[var(--brand)]"}
+          opacity="0.12"
         />
       )}
       <defs>
@@ -389,8 +382,8 @@ function ScalarBox({ x, y, w, h, item, active, fail, hovered, onHover }) {
         style={{ transition: "all 220ms ease" }}
       />
       <g clipPath={`url(#${clipId})`}>
-        <text x={x + 12} y={y + 18} fontSize="10" letterSpacing="2" className={lblClass}>
-          {kind === "pointer" ? "PTR" : "INT"}
+        <text x={x + 12} y={y + 18} fontSize="11" className={lblClass}>
+          {kind === "pointer" ? "ptr" : "int"}
         </text>
         <text
           x={x + w - 12}
@@ -425,7 +418,7 @@ function ValidBracket({ x1, x2, y, N }) {
       <path
         d={`M ${x1} ${y + tick} L ${x1} ${y} L ${x2} ${y} L ${x2} ${y + tick}`}
         fill="none"
-        className="stroke-amber"
+        className="stroke-[var(--state-passed)]"
         strokeWidth="1.4"
       />
       <text
@@ -433,10 +426,9 @@ function ValidBracket({ x1, x2, y, N }) {
         y={y - 10}
         textAnchor="middle"
         fontSize="11"
-        letterSpacing="2"
-        className="fill-amber"
+        className="fill-[var(--state-passed)]"
       >
-        {`VALID  ·  0 ≤ idx < ${N}`}
+        {`valid · 0 ≤ idx < ${N}`}
       </text>
     </g>
   );
@@ -451,8 +443,8 @@ function OobZone({ x, w, y, active }) {
         fill="none"
         className={
           active
-            ? "stroke-[var(--trace-fail)]"
-            : "stroke-[color:color-mix(in_oklch,var(--trace-fail)_45%,transparent)]"
+            ? "stroke-[var(--state-failed)]"
+            : "stroke-[color:color-mix(in_oklch,var(--state-failed)_45%,transparent)]"
         }
         strokeWidth="1.4"
         style={{ transition: "stroke 220ms ease" }}
@@ -461,43 +453,47 @@ function OobZone({ x, w, y, active }) {
         x={x + w / 2}
         y={y - 10}
         textAnchor="middle"
-        fontSize="10"
-        letterSpacing="2"
+        fontSize="11"
         className={
           active
-            ? "fill-[var(--trace-fail)]"
-            : "fill-[color:color-mix(in_oklch,var(--trace-fail)_55%,transparent)]"
+            ? "fill-[var(--state-failed)]"
+            : "fill-[color:color-mix(in_oklch,var(--state-failed)_55%,transparent)]"
         }
         style={{ transition: "fill 220ms ease" }}
       >
-        OUT OF BOUNDS
+        out of bounds
       </text>
     </g>
   );
 }
 
 function MemCell({ x, y, w, h, value, index, active, fail, phantom }) {
-  let strokeClass = "stroke-[color:var(--color-border)]";
-  let fillClass = "fill-transparent";
-  let textClass = "fill-[color:var(--color-foreground)]";
+  let strokeClass = "stroke-[var(--rule)]";
+  let fillClass = "fill-[var(--paper)]";
+  let textClass = "fill-[var(--ink)]";
+  let indexClass = "fill-[var(--ink-muted)]";
   const dasharray = phantom ? "5 4" : null;
 
   if (phantom && fail) {
-    strokeClass = "stroke-[var(--trace-fail)]";
+    strokeClass = "stroke-[var(--state-failed)]";
     fillClass = "fill-[url(#hatch-red)]";
-    textClass = "fill-[var(--trace-fail)]";
+    textClass = "fill-[var(--state-failed)]";
+    indexClass = "fill-[var(--state-failed)]";
   } else if (phantom) {
-    strokeClass = "stroke-[color:color-mix(in_oklch,var(--trace-fail)_45%,transparent)]";
+    strokeClass = "stroke-[color:color-mix(in_oklch,var(--state-failed)_45%,transparent)]";
     fillClass = "fill-[url(#hatch)]";
-    textClass = "fill-[color:var(--color-muted-foreground)]";
+    textClass = "fill-[var(--ink-muted)]";
+    indexClass = "fill-[var(--ink-muted)]";
   } else if (fail) {
-    strokeClass = "stroke-[var(--trace-fail)]";
-    fillClass = "fill-[var(--trace-fail-soft)]";
-    textClass = "fill-[var(--trace-fail)]";
+    strokeClass = "stroke-[var(--state-failed)]";
+    fillClass = "fill-[color:color-mix(in_oklch,var(--state-failed)_10%,var(--paper))]";
+    textClass = "fill-[var(--state-failed)]";
+    indexClass = "fill-[var(--state-failed)]";
   } else if (active) {
-    strokeClass = "stroke-amber";
-    fillClass = "fill-amber-soft";
-    textClass = "fill-amber";
+    strokeClass = "stroke-[var(--brand)]";
+    fillClass = "fill-[color:color-mix(in_oklch,var(--brand)_10%,var(--paper))]";
+    textClass = "fill-[var(--brand)]";
+    indexClass = "fill-[var(--brand)]";
   }
 
   const valStr = String(value);
@@ -512,8 +508,8 @@ function MemCell({ x, y, w, h, value, index, active, fail, phantom }) {
           width={w}
           height={h}
           rx="6"
-          className={fail ? "fill-[var(--trace-fail)]" : "fill-amber"}
-          opacity="0.18"
+          className={fail ? "fill-[var(--state-failed)]" : "fill-[var(--brand)]"}
+          opacity="0.12"
         />
       )}
       <rect
@@ -543,8 +539,7 @@ function MemCell({ x, y, w, h, value, index, active, fail, phantom }) {
         y={y + h + 22}
         textAnchor="middle"
         fontSize="11"
-        letterSpacing="1"
-        className={textClass}
+        className={indexClass}
         fontFamily="var(--font-mono)"
       >
         [{index}]
@@ -563,55 +558,53 @@ function ScalarPopover({ item, x, y, containerWidth, containerHeight, currentSte
   const writes = Array.isArray(item.history) ? item.history.length : 0;
   const stepOfCurrent = item.stepOfCurrent ?? null;
 
-  // Position so the popover stays inside the container.
   let left = x + POPOVER_OFFSET_X;
   let top = y + POPOVER_OFFSET_Y;
   if (left + POPOVER_W > containerWidth) {
     left = Math.max(8, x - POPOVER_W - POPOVER_OFFSET_X);
   }
-  // Cap to container; clamp top to leave room for ~200px of content.
   top = Math.min(Math.max(8, top), Math.max(8, containerHeight - 220));
 
-  const accent = isFail ? "var(--trace-fail)" : "var(--amber)";
+  const accent = isFail ? "var(--state-failed)" : "var(--brand)";
 
   return (
     <div
       className={cn(
         "absolute z-30 pointer-events-none",
-        "rounded-xl border border-border/60 bg-popover shadow-xl",
+        "rounded-xl border border-[var(--rule)] bg-card shadow-xl",
         "animate-fade-in-fast"
       )}
       style={{ left, top, width: POPOVER_W }}
     >
-      <div className="px-3.5 py-2.5 border-b border-border/40 flex items-center gap-2">
+      <div className="px-3.5 py-2.5 border-b border-[var(--rule)] flex items-center gap-2">
         <span
-          className="text-xs px-1.5 py-0.5 rounded"
+          className="text-xs px-1.5 py-0.5 rounded font-mono"
           style={{
             color: accent,
-            background: `color-mix(in oklch, ${accent} 18%, transparent)`,
+            background: `color-mix(in oklch, ${accent} 12%, transparent)`,
           }}
         >
           {item.kind === "pointer" ? "ptr" : "int"}
         </span>
-        <span className="font-mono text-xs text-foreground truncate flex-1">
+        <span className="font-mono text-xs text-ink truncate flex-1">
           {item.name}
         </span>
       </div>
 
       <div className="px-3.5 py-3 space-y-2">
         <div>
-          <div className="text-xs text-muted-foreground mb-1">
+          <div className="text-xs text-ink-muted mb-1">
             Value
           </div>
           <div
             className="font-mono text-sm break-all"
-            style={{ color: isFail ? "var(--trace-fail)" : "var(--color-foreground)" }}
+            style={{ color: isFail ? "var(--state-failed)" : "var(--ink)" }}
           >
             {value}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-border/30">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-[var(--rule)]">
           {type && <PopoverRow k="type" v={type} mono />}
           <PopoverRow
             k="last write"
@@ -642,12 +635,12 @@ function ScalarPopover({ item, x, y, containerWidth, containerHeight, currentSte
 function PopoverRow({ k, v, mono }) {
   return (
     <div className="flex items-baseline gap-2 min-w-0">
-      <span className="text-xs text-muted-foreground/70 shrink-0">
+      <span className="text-xs text-ink-muted shrink-0">
         {k}
       </span>
       <span
         className={cn(
-          "text-xs text-foreground truncate",
+          "text-xs text-ink truncate",
           mono && "font-mono"
         )}
       >

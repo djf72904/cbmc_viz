@@ -7,7 +7,7 @@ import { fmtValue } from "@/parser.js";
 function Section({ title, children, className }) {
   return (
     <section className={cn("space-y-2.5", className)}>
-      <h3 className="text-xs font-semibold text-muted-foreground/80">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
         {title}
       </h3>
       <div>{children}</div>
@@ -16,7 +16,7 @@ function Section({ title, children, className }) {
 }
 
 function Divider() {
-  return <div className="h-px bg-border/40" />;
+  return <div className="h-px bg-rule" />;
 }
 
 export function StatePanel({ vars, isFail }) {
@@ -24,8 +24,8 @@ export function StatePanel({ vars, isFail }) {
     <Section title="State">
       <div className="space-y-1.5">
         {!vars || vars.length === 0 ? (
-          <div className="text-xs text-muted-foreground italic">
-            (none yet — step forward)
+          <div className="text-[12px] text-ink-muted italic">
+            (none yet, step forward)
           </div>
         ) : (
           vars.map((v) => <VarRow key={v.name} v={v} isFail={isFail} />)
@@ -42,14 +42,14 @@ function VarRow({ v, isFail }) {
       .join(", ");
     return (
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs text-muted-foreground font-mono">
+        <span className="text-[12px] text-ink-muted font-mono">
           {v.name}
-          <span className="text-foreground/30">[{v.size}]</span>
+          <span className="text-ink/30">[{v.size}]</span>
         </span>
         <span
           className={cn(
-            "text-xs font-mono truncate max-w-[200px]",
-            isFail ? "text-[var(--trace-fail)]" : "text-foreground"
+            "text-[12px] font-mono truncate max-w-[200px]",
+            isFail ? "text-[var(--state-failed)]" : "text-ink"
           )}
         >
           [{cellsStr}]
@@ -61,16 +61,16 @@ function VarRow({ v, isFail }) {
   const tag = v.kind === "pointer" ? "ptr" : "int";
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs text-muted-foreground font-mono inline-flex items-baseline gap-2">
-        <Badge variant="muted" className="text-xs px-1 py-0">
+      <span className="text-[12px] text-ink-muted font-mono inline-flex items-baseline gap-2">
+        <Badge variant="muted" className="text-[10px] px-1.5 py-0">
           {tag}
         </Badge>
         {v.name}
       </span>
       <span
         className={cn(
-          "font-mono text-sm tabular-nums truncate max-w-[180px]",
-          isFail ? "text-[var(--trace-fail)]" : "text-foreground"
+          "font-mono text-[13px] tabular-nums truncate max-w-[180px]",
+          isFail ? "text-[var(--state-failed)]" : "text-ink"
         )}
       >
         {valStr}
@@ -84,8 +84,8 @@ export function NarrationPanel({ note, isFail }) {
     <Section title="Narration">
       <div
         className={cn(
-          "text-sm leading-relaxed min-h-[40px]",
-          isFail ? "text-[var(--trace-fail)]" : "text-foreground/85"
+          "text-[13px] leading-relaxed min-h-[40px]",
+          isFail ? "text-[var(--state-failed)]" : "text-ink/85"
         )}
       >
         {note || "—"}
@@ -110,16 +110,16 @@ export function ActiveStepPanel({ step, total, isFail }) {
   return (
     <Section title="Active Step">
       <div className="space-y-2">
-        <Badge variant={isFail ? "fail" : "amber"} className="text-xs">
+        <Badge variant={isFail ? "fail" : "brand"}>
           {label}
         </Badge>
         {step && (
-          <div className="text-xs text-muted-foreground font-mono">
+          <div className="text-[12px] text-ink-muted font-mono">
             step {step.idx + 1} / {total} · raw idx {step.rawIdx}
           </div>
         )}
         {step?.loc && (
-          <div className="text-xs font-mono text-foreground/80 truncate">
+          <div className="text-[12px] font-mono text-ink/80 truncate">
             {step.loc.function ?? "·"}:{step.loc.line ?? "?"}
           </div>
         )}
@@ -128,10 +128,16 @@ export function ActiveStepPanel({ step, total, isFail }) {
   );
 }
 
-export function TraceInfoPanel({ meta, stepCount, varCount, source }) {
+export function TraceInfoPanel({ meta, stepCount, varCount, source, analysis }) {
+  const flagsUsed = analysis?.flagsUsed?.length ? analysis.flagsUsed.join(" ") : null;
+  const entry = analysis?.entry || null;
+  const unwind = analysis?.unwind ?? null;
+  const exitCode = analysis?.exitCode ?? null;
+  const stderr = analysis?.stderr || null;
+
   return (
     <Section title="Trace Info">
-      <div className="space-y-1.5 text-xs">
+      <div className="space-y-1.5 text-[12px]">
         {source && (
           <Row
             k="source"
@@ -153,11 +159,43 @@ export function TraceInfoPanel({ meta, stepCount, varCount, source }) {
               : String(stepCount)
           }
         />
-        {meta.description && (
-          <Row k="desc" v={meta.description} />
+        {flagsUsed && <Row k="flags" v={flagsUsed} />}
+        {entry && <Row k="entry" v={`${entry}()`} />}
+        {unwind != null && <Row k="unwind" v={String(unwind)} />}
+        {exitCode != null && (
+          <Row
+            k="exit"
+            v={String(exitCode)}
+            accent={exitCode === 0 ? "ok" : exitCode === 10 ? "fail" : "muted"}
+          />
         )}
+        {meta.description && <Row k="desc" v={meta.description} />}
+        {stderr && <StderrRow stderr={stderr} />}
       </div>
     </Section>
+  );
+}
+
+function StderrRow({ stderr }) {
+  const [open, setOpen] = useState(false);
+  const oneLine = stderr.split("\n").find((l) => l.trim()) ?? stderr;
+  return (
+    <div className="space-y-1.5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left flex items-baseline gap-2.5 hover:opacity-80"
+      >
+        <span className="text-[12px] text-ink-muted/70 w-16 shrink-0">stderr</span>
+        <span className="font-mono flex-1 truncate text-[var(--state-failed)]">
+          {oneLine}
+        </span>
+      </button>
+      {open && (
+        <pre className="ml-[4.5rem] rounded-md border border-rule bg-paper/60 p-2 font-mono text-[11.5px] text-ink/80 whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto">
+          {stderr}
+        </pre>
+      )}
+    </div>
   );
 }
 
@@ -179,17 +217,16 @@ function Row({ k, v, accent }) {
       onMouseEnter={handleEnter}
       onMouseLeave={() => setHovering(false)}
     >
-      <span className="text-xs text-muted-foreground/70 w-16 shrink-0">
-        {k}
-      </span>
+      <span className="text-[12px] text-ink-muted/70 w-16 shrink-0">{k}</span>
       <span
         ref={ref}
         className={cn(
           "font-mono flex-1 truncate",
           overflowing && hovering && "cursor-help",
-          accent === "ok" && "text-[var(--trace-ok)]",
-          accent === "muted" && "text-muted-foreground",
-          !accent && "text-foreground"
+          accent === "ok" && "text-[var(--state-passed)]",
+          accent === "fail" && "text-[var(--state-failed)]",
+          accent === "muted" && "text-ink-muted",
+          !accent && "text-ink"
         )}
       >
         {v}
@@ -212,13 +249,13 @@ function FieldPopover({ anchor, k, v }) {
 
   return createPortal(
     <div
-      className="fixed z-50 pointer-events-none rounded-xl border border-border/60 bg-popover shadow-xl animate-fade-in-fast"
+      className="fixed z-50 pointer-events-none rounded-xl border border-rule bg-popover shadow-xl animate-fade-in-fast"
       style={{ left, top, width }}
     >
-      <div className="px-3.5 py-2 border-b border-border/40 text-xs text-muted-foreground">
+      <div className="px-3.5 py-2 border-b border-rule text-[11.5px] text-ink-muted">
         {k}
       </div>
-      <div className="px-3.5 py-2.5 font-mono text-xs text-foreground break-all whitespace-pre-wrap leading-relaxed max-h-[40vh] overflow-y-auto">
+      <div className="px-3.5 py-2.5 font-mono text-[12px] text-ink break-all whitespace-pre-wrap leading-relaxed max-h-[40vh] overflow-y-auto">
         {v}
       </div>
     </div>,

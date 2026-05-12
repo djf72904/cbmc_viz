@@ -8,15 +8,6 @@ function isLibFrame(fn) {
   return !!fn && LIB_FN_RE.test(fn);
 }
 
-/**
- * Build a control-flow graph from the parsed trace.
- * Each unique (function, line) becomes a node, in first-visit order.
- * Edges are unique transitions between consecutive steps.
- *
- * Steps inside library / CPROVER frames are skipped, so we don't render
- * malloc/free internals as part of the user program graph; the call to the
- * library function still appears as a single node in the calling function.
- */
 function buildGraph(steps) {
   const nodes = [];
   const byKey = new Map();
@@ -77,7 +68,9 @@ const ZOOM_MAX = 4;
 
 export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
   const { nodes, edges } = useMemo(() => buildGraph(parsed.steps), [parsed]);
-  const accentClass = isFail ? "stroke-[var(--trace-fail)]" : "stroke-amber";
+  const accentClass = isFail
+    ? "stroke-[var(--state-failed)]"
+    : "stroke-[var(--brand)]";
 
   const layout = useMemo(() => {
     const cx = W / 2;
@@ -114,7 +107,6 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     });
   }, [containerWidth]);
 
-  // Track container width to keep viewBox aspect ratio in sync.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -125,8 +117,6 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     return () => ro.disconnect();
   }, []);
 
-  // When container width or layout changes, recompute viewBox height so we keep
-  // the same world-width but match the viewport's aspect ratio.
   useEffect(() => {
     setViewBoxState((prev) => {
       const w = prev.w;
@@ -135,13 +125,11 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     });
   }, [containerWidth]);
 
-  // Auto-fit on first layout (or when nodes change shape).
   const lastFitKey = useRef("");
   useEffect(() => {
     const key = `${nodes.length}:${containerWidth}`;
     if (lastFitKey.current === key) return;
     lastFitKey.current = key;
-    // Default world width = canvas natural width, world height tracked above.
     setViewBoxState({
       x: 0,
       y: 0,
@@ -150,7 +138,6 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     });
   }, [nodes.length, containerWidth]);
 
-  // Auto-pan to the active node only if it's not (fully) inside the viewBox.
   useEffect(() => {
     const active = posByKey.get(activeKey);
     if (!active) return;
@@ -192,7 +179,7 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     const focus = screenToWorld(e.clientX, e.clientY);
     setViewBox({
       w: viewBox.w * factor,
-      h: viewBox.h, // recomputed inside setter
+      h: viewBox.h,
       x: focus.x - (focus.x - viewBox.x) * factor,
       y: focus.y - (focus.y - viewBox.y) * factor,
     });
@@ -236,7 +223,6 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
 
   const fitAll = () => {
     setFollowActive(false);
-    // Fit world (W × totalH) into viewport. Choose larger w-or-h scale so all is visible.
     const aspect = VIEWPORT_HEIGHT_PX / Math.max(1, containerWidth);
     const w = Math.max(W, totalH / aspect);
     setViewBoxState({
@@ -261,7 +247,7 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full bg-background/40 rounded-lg border border-border/30 overflow-hidden select-none"
+      className="relative w-full bg-card rounded-lg border border-[var(--rule)] overflow-hidden select-none"
       style={{ height: VIEWPORT_HEIGHT_PX }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -282,12 +268,12 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
     >
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-[color:var(--color-border)]" />
+          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-[var(--ink-muted)]" />
         </marker>
         <marker id="arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
           <path
             d="M 0 0 L 10 5 L 0 10 z"
-            className={isFail ? "fill-[var(--trace-fail)]" : "fill-amber"}
+            className={isFail ? "fill-[var(--state-failed)]" : "fill-[var(--brand)]"}
           />
         </marker>
       </defs>
@@ -313,7 +299,7 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
             <path
               d={d}
               fill="none"
-              className={onPath ? accentClass : "stroke-[color:var(--color-border)]"}
+              className={onPath ? accentClass : "stroke-[var(--rule)]"}
               strokeWidth={onPath ? 2.2 : 1.3}
               markerEnd={onPath ? "url(#arrow-on)" : "url(#arrow)"}
               style={{ transition: "stroke 220ms ease, stroke-width 220ms ease" }}
@@ -327,9 +313,9 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
                 className={
                   onPath
                     ? isFail
-                      ? "fill-[var(--trace-fail)]"
-                      : "fill-amber"
-                    : "fill-[color:var(--color-muted-foreground)]"
+                      ? "fill-[var(--state-failed)]"
+                      : "fill-[var(--brand)]"
+                    : "fill-[var(--ink-muted)]"
                 }
               >
                 LOOP
@@ -356,9 +342,9 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
           y={totalH / 2}
           textAnchor="middle"
           fontSize="14"
-          className="fill-[color:var(--color-muted-foreground)]"
+          className="fill-[var(--ink-muted)]"
         >
-          (no flow nodes — empty trace)
+          (empty trace)
         </text>
       )}
     </svg>
@@ -377,7 +363,7 @@ export function CFGCanvas({ parsed, currentStep, isFail, onNodeClick }) {
 
 function CanvasToolbar({ onZoomIn, onZoomOut, onFit, onRecenter, followActive, hasActive }) {
   return (
-    <div className="absolute top-2 right-2 flex flex-col gap-1 rounded-lg border border-border/40 bg-background/80 backdrop-blur-sm p-1 shadow-sm">
+    <div className="absolute top-2 right-2 flex flex-col gap-1 rounded-lg border border-[var(--rule)] bg-card/90 backdrop-blur-sm p-1 shadow-sm">
       <ToolbarButton title="Zoom in" onClick={onZoomIn}>
         <ZoomIn className="h-3.5 w-3.5" />
       </ToolbarButton>
@@ -410,8 +396,8 @@ function ToolbarButton({ title, onClick, children, active, disabled }) {
       title={title}
       disabled={disabled}
       className={
-        "h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed " +
-        (active ? "bg-amber/15 text-amber hover:text-amber" : "")
+        "h-7 w-7 inline-flex items-center justify-center rounded-md text-ink-muted hover:bg-[var(--rule)]/60 hover:text-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed " +
+        (active ? "bg-brand/15 text-brand hover:text-brand" : "")
       }
     >
       {children}
@@ -426,33 +412,34 @@ function clipText(text, maxChars) {
     : s;
 }
 
-// Approximate character widths in pixels for the fonts we use.
-const TAG_CHAR_PX = 8.5;     // 10px display + 2.2 letter-spacing
-const SUB_CHAR_PX = 7.5;     // 10px mono + 2 letter-spacing
-const HINT_CHAR_PX = 7.2;    // 12px mono
+const TAG_CHAR_PX = 8.5;
+const SUB_CHAR_PX = 7.5;
+const HINT_CHAR_PX = 7.2;
 
 function CFGNode({ node, active, isViolation, isFail, onClick }) {
   const { cx, cy, w, h, fn, line, visits, labelHints } = node;
   const x = cx - w / 2;
   const y = cy - h / 2;
 
-  let strokeClass = "stroke-[color:var(--color-border)]";
-  let fillClass = "fill-transparent";
-  let textClass = "fill-[color:var(--color-muted-foreground)]";
-  let subClass = "fill-[color:var(--color-muted-foreground)]";
+  let strokeClass = "stroke-[var(--rule)]";
+  let fillClass = "fill-[var(--paper)]";
+  let textClass = "fill-[var(--ink-muted)]";
+  let subClass = "fill-[var(--ink-muted)]";
 
   if (isViolation) {
     strokeClass = active
-      ? "stroke-[var(--trace-fail)]"
-      : "stroke-[color:color-mix(in_oklch,var(--trace-fail)_45%,transparent)]";
-    fillClass = active ? "fill-[var(--trace-fail-soft)]" : "fill-transparent";
-    textClass = "fill-[var(--trace-fail)]";
-    subClass = "fill-[var(--trace-fail)]";
+      ? "stroke-[var(--state-failed)]"
+      : "stroke-[color:color-mix(in_oklch,var(--state-failed)_45%,transparent)]";
+    fillClass = active
+      ? "fill-[color:color-mix(in_oklch,var(--state-failed)_10%,var(--paper))]"
+      : "fill-[var(--paper)]";
+    textClass = "fill-[var(--state-failed)]";
+    subClass = "fill-[var(--state-failed)]";
   } else if (active) {
-    strokeClass = "stroke-amber";
-    fillClass = "fill-amber-soft";
-    textClass = "fill-amber";
-    subClass = "fill-[color:var(--color-foreground)]";
+    strokeClass = "stroke-[var(--brand)]";
+    fillClass = "fill-[color:color-mix(in_oklch,var(--brand)_10%,var(--paper))]";
+    textClass = "fill-[var(--brand)]";
+    subClass = "fill-[var(--ink)]";
   }
 
   const tag = isViolation
@@ -463,7 +450,6 @@ function CFGNode({ node, active, isViolation, isFail, onClick }) {
         ? "ENTRY"
         : "STEP";
 
-  // Reserve space at the top: tag on the left, fn:line on the right, ~16px gap.
   const tagW = tag.length * TAG_CHAR_PX;
   const subAvailable = w - 28 - tagW - 16;
   const subText = `${fn}:${line}${visits > 1 ? `  ×${visits}` : ""}`;
@@ -488,8 +474,8 @@ function CFGNode({ node, active, isViolation, isFail, onClick }) {
           y={y + 4}
           width={w}
           height={h}
-          className={isFail ? "fill-[var(--trace-fail)]" : "fill-amber"}
-          opacity="0.18"
+          className={isFail ? "fill-[var(--state-failed)]" : "fill-[var(--brand)]"}
+          opacity="0.12"
           rx="10"
         />
       )}
