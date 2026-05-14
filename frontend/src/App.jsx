@@ -8,8 +8,7 @@ import {
   removeHistoryItem,
   clearHistory,
 } from "@/lib/history.js";
-import { Sidebar } from "@/components/layout/Sidebar.jsx";
-import { TopBar } from "@/components/layout/TopBar.jsx";
+import { AppHeader } from "@/components/layout/AppHeader.jsx";
 import { ChecksBar } from "@/components/ChecksBar.jsx";
 import { TraceControls } from "@/components/TraceControls.jsx";
 import {
@@ -26,16 +25,10 @@ import { SourceCodeView } from "@/components/SourceCodeView.jsx";
 import { EmptyState } from "@/components/EmptyState.jsx";
 import { cn } from "@/lib/utils.js";
 
-const VIEW_TITLES = {
-  graph: "Control Flow",
-  memory: "Memory",
-  trace: "Trace",
-  steps: "Steps",
-};
-
 export default function App() {
   const [traceData, setTraceData] = useState(null);
   const [fileName, setFileName] = useState(null);
+  const [analysisInfo, setAnalysisInfo] = useState(null);
   const [pendingFileName, setPendingFileName] = useState(null);
   const [pendingFlags, setPendingFlags] = useState([]);
   const [pendingEntry, setPendingEntry] = useState("");
@@ -50,7 +43,6 @@ export default function App() {
   const [speed, setSpeed] = useState(700);
   const [view, setView] = useState("graph");
   const [checks, setChecks] = useState(DEFAULT_CHECKS);
-  const [collapsed, setCollapsed] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState(null);
   const [history, setHistory] = useState(() => loadHistory());
@@ -118,6 +110,13 @@ export default function App() {
           name: result.sourceName ?? file.name,
           text: result.sourceText ?? "",
         });
+        setAnalysisInfo({
+          flagsUsed: result.flagsUsed ?? [],
+          entry: result.entry ?? null,
+          unwind: result.unwind ?? null,
+          exitCode: result.exitCode ?? null,
+          stderr: result.stderr ?? null,
+        });
         setStep(0);
         setPlaying(false);
 
@@ -130,6 +129,7 @@ export default function App() {
           entry: result.entry ?? opts.entry ?? null,
           unwind: result.unwind ?? opts.unwind ?? null,
           exitCode: result.exitCode,
+          stderr: result.stderr ?? null,
         });
         setHistory(loadHistory());
         setActiveHistoryId(saved.id);
@@ -150,6 +150,13 @@ export default function App() {
       setTraceData(parsed);
       setFileName(item.fileName);
       setSource({ name: item.fileName, text: item.sourceText ?? "" });
+      setAnalysisInfo({
+        flagsUsed: item.flagsUsed ?? [],
+        entry: item.entry ?? null,
+        unwind: item.unwind ?? null,
+        exitCode: item.exitCode ?? null,
+        stderr: item.stderr ?? null,
+      });
       setStep(0);
       setPlaying(false);
       setError(null);
@@ -206,6 +213,7 @@ export default function App() {
     setTraceData(null);
     setFileName(null);
     setSource(null);
+    setAnalysisInfo(null);
     setStep(0);
     setPlaying(false);
     setError(null);
@@ -218,137 +226,123 @@ export default function App() {
 
   return (
     <div
-      className="relative min-h-screen bg-background text-foreground"
+      className="relative min-h-screen bg-paper text-ink"
       onDrop={onDrop}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
-      <Sidebar
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((c) => !c)}
-        meta={traceData?.meta}
+      <AppHeader
+        fileName={fileName}
+        hasTrace={hasTrace}
+        view={view}
+        onChangeView={setView}
+        onUpload={(file) =>
+          analyze(file, {
+            flags: pendingFlags,
+            entry: pendingEntry,
+            unwind: pendingUnwind,
+          })
+        }
+        onReset={clearTrace}
+        onOpenSource={() => setSheetOpen(true)}
         history={history}
         activeHistoryId={activeHistoryId}
         onSelectHistory={loadFromHistory}
         onRemoveHistory={removeHistory}
         onClearHistory={clearAllHistory}
+        onPickSample={(file, opts) => analyze(file, opts)}
       />
 
-      <div
-        className="transition-[margin] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
-        style={{ marginLeft: collapsed ? 64 : 240 }}
-      >
-        <TopBar
-          fileName={fileName}
-          uploaded={hasTrace}
-          isFail={isFail}
-          onUpload={(file) =>
-            analyze(file, {
-              flags: pendingFlags,
-              entry: pendingEntry,
-              unwind: pendingUnwind,
-            })
-          }
-          onPickSample={(file, opts) => analyze(file, opts)}
-          onReset={clearTrace}
-          onOpenSource={() => setSheetOpen(true)}
-          pageTitle={hasTrace ? (VIEW_TITLES[view] ?? "CBMC Viz") : "CBMC Viz"}
-          collapsed={collapsed}
-          onToggleSidebar={() => setCollapsed((c) => !c)}
-          showSourceButton={hasTrace}
-          showResetButton={hasTrace}
-        />
-
-        <main className="px-8 pb-10 pt-20 max-w-[1400px] mx-auto">
-          {!hasTrace ? (
-            <EmptyState
-              onAnalyze={analyze}
-              loading={analyzing}
+      <main className="mx-auto max-w-[1280px] px-4 sm:px-6 py-8">
+        {!hasTrace ? (
+          <EmptyState
+            onAnalyze={analyze}
+            loading={analyzing}
+            error={error}
+            errorReasons={errorReasons}
+            errorMetrics={errorMetrics}
+            onClearError={() => {
+              setError(null);
+              setErrorReasons(null);
+              setErrorMetrics(null);
+            }}
+            fileName={pendingFileName}
+          />
+        ) : (
+          <>
+            <TraceStatus
+              meta={traceData.meta}
+              fileName={fileName}
+              isFail={isFail}
               error={error}
-              errorReasons={errorReasons}
-              errorMetrics={errorMetrics}
-              onClearError={() => {
-                setError(null);
-                setErrorReasons(null);
-                setErrorMetrics(null);
-              }}
-              fileName={pendingFileName}
+              onClearError={() => setError(null)}
             />
-          ) : (
-            <>
-              <TraceHeader
-                meta={traceData.meta}
-                isFail={isFail}
-                error={error}
-                onClearError={() => setError(null)}
-              />
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mt-6">
-                <div className="space-y-4 min-w-0">
-                  <ChecksBar
-                    checks={checks}
-                    onToggle={toggleCheck}
-                    triggeredFlag={triggeredFlag}
-                    isFail={isFail}
-                  />
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mt-6">
+              <div className="space-y-4 min-w-0">
+                <ChecksBar
+                  checks={checks}
+                  onToggle={toggleCheck}
+                  triggeredFlag={triggeredFlag}
+                  isFail={isFail}
+                />
 
-                  <TraceControls
-                    step={step}
-                    total={STEPS.length}
-                    playing={playing}
-                    speed={speed}
-                    isFail={isFail}
-                    onPrev={prev}
-                    onNext={next}
-                    onPlayToggle={() => setPlaying((p) => !p)}
-                    onReset={reset}
-                    onSpeedChange={setSpeed}
-                  />
+                <TraceControls
+                  step={step}
+                  total={STEPS.length}
+                  playing={playing}
+                  speed={speed}
+                  isFail={isFail}
+                  onPrev={prev}
+                  onNext={next}
+                  onPlayToggle={() => setPlaying((p) => !p)}
+                  onReset={reset}
+                  onSpeedChange={setSpeed}
+                />
 
-                  <CanvasCard
-                    view={view}
-                    onChangeView={setView}
-                    parsed={traceData}
-                    cur={cur}
-                    isFail={isFail}
-                    steps={STEPS}
-                    currentIdx={cur?.idx ?? 0}
-                    onSelectStep={setStep}
-                    source={source}
-                    onSourceLoad={(file) => {
-                      const reader = new FileReader();
-                      reader.onload = (ev) =>
-                        setSource({
-                          name: file.name,
-                          text: String(ev.target.result ?? ""),
-                        });
-                      reader.readAsText(file);
-                    }}
-                    meta={traceData.meta}
-                    onOpenSource={() => setSheetOpen(true)}
-                  />
-                </div>
-
-                <aside className="divide-y divide-border/40 [&>section]:py-5 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
-                  <StatePanel vars={liveVars} isFail={isFail} />
-                  <NarrationPanel note={cur?.note} isFail={isFail} />
-                  <ActiveStepPanel
-                    step={cur}
-                    total={STEPS.length}
-                    isFail={isFail}
-                  />
-                  <TraceInfoPanel
-                    meta={traceData.meta}
-                    stepCount={STEPS.length}
-                    varCount={traceData.variables.length}
-                    source={traceSource}
-                  />
-                </aside>
+                <CanvasCard
+                  view={view}
+                  parsed={traceData}
+                  cur={cur}
+                  isFail={isFail}
+                  steps={STEPS}
+                  currentIdx={cur?.idx ?? 0}
+                  onSelectStep={setStep}
+                  source={source}
+                  onSourceLoad={(file) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) =>
+                      setSource({
+                        name: file.name,
+                        text: String(ev.target.result ?? ""),
+                      });
+                    reader.readAsText(file);
+                  }}
+                  meta={traceData.meta}
+                  onOpenSource={() => setSheetOpen(true)}
+                />
               </div>
-            </>
-          )}
-        </main>
-      </div>
+
+              <aside className="divide-y divide-rule [&>section]:py-5 [&>section:first-child]:pt-0 [&>section:last-child]:pb-0">
+                <StatePanel vars={liveVars} isFail={isFail} />
+                <NarrationPanel note={cur?.note} isFail={isFail} />
+                <ActiveStepPanel
+                  step={cur}
+                  total={STEPS.length}
+                  isFail={isFail}
+                />
+                <TraceInfoPanel
+                  meta={traceData.meta}
+                  stepCount={STEPS.length}
+                  varCount={traceData.variables.length}
+                  source={traceSource}
+                  analysis={analysisInfo}
+                />
+              </aside>
+            </div>
+          </>
+        )}
+      </main>
 
       {hasTrace && (
         <SourceSheet
@@ -372,10 +366,10 @@ export default function App() {
       )}
 
       {dragOver && (
-        <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm border-2 border-dashed border-amber flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-[100] bg-paper/95 backdrop-blur-sm border-2 border-dashed border-brand flex items-center justify-center pointer-events-none">
           <div className="text-center">
-            <div className="text-4xl font-semibold text-amber">Drop file</div>
-            <div className="text-xs text-muted-foreground mt-3">
+            <div className="text-4xl font-semibold text-brand">Drop file</div>
+            <div className="text-xs text-ink-muted mt-3">
               C / C++ source file
             </div>
           </div>
@@ -385,27 +379,38 @@ export default function App() {
   );
 }
 
-function TraceHeader({ meta, isFail, error, onClearError }) {
+function TraceStatus({ meta, fileName, isFail, error, onClearError }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-6 pb-5 border-b border-border/50">
-        <div className="min-w-0">
-          <div className="text-xs text-muted-foreground">
-            CBMC · trace visualizer
+      <div className="flex items-center justify-between gap-6">
+        <div className="min-w-0 flex items-center gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.08em] text-ink-muted">
+              CBMC trace
+            </div>
+            <div className="mt-0.5 font-mono text-[13px] text-ink truncate">
+              {meta?.fnName ? `${meta.fnName}()` : fileName}
+              {meta?.file && meta?.line ? (
+                <span className="text-ink-muted">
+                  {" "}
+                  · {meta.file}:{meta.line}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
         <div
           className={cn(
-            "shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border",
+            "shrink-0 inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11.5px] font-medium border",
             isFail
-              ? "bg-[var(--trace-fail)] text-background border-transparent"
-              : "border-amber/60 text-amber"
+              ? "bg-[var(--state-failed)]/10 text-[var(--state-failed)] border-[var(--state-failed)]/30"
+              : "bg-brand/10 text-brand border-brand/30"
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              isFail ? "bg-background" : "bg-amber"
+              isFail ? "bg-[var(--state-failed)]" : "bg-brand"
             )}
           />
           {isFail ? "Failure" : "Tracing"}
@@ -413,11 +418,11 @@ function TraceHeader({ meta, isFail, error, onClearError }) {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-[var(--trace-fail)]/40 bg-[var(--trace-fail-soft)] px-4 py-2.5 text-xs text-[var(--trace-fail)] flex items-center justify-between">
+        <div className="rounded-xl border border-[var(--state-failed)]/40 bg-[var(--state-failed)]/10 px-4 py-2.5 text-xs text-[var(--state-failed)] flex items-center justify-between">
           <span className="font-mono">{error}</span>
           <button
             onClick={onClearError}
-            className="text-[var(--trace-fail)]/80 hover:text-[var(--trace-fail)]"
+            className="text-[var(--state-failed)]/80 hover:text-[var(--state-failed)]"
           >
             dismiss
           </button>
@@ -429,7 +434,6 @@ function TraceHeader({ meta, isFail, error, onClearError }) {
 
 function CanvasCard({
   view,
-  onChangeView,
   parsed,
   cur,
   isFail,
@@ -441,34 +445,18 @@ function CanvasCard({
   meta,
   onOpenSource,
 }) {
-  const stepLocLabel = cur
-    ? `${cur.loc.function || "·"}:${cur.loc.line || "?"}`
-    : "—";
   const isFlat = view === "steps" || view === "trace";
+  const isCanvas = view === "graph" || view === "memory";
   return (
-    <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
-      <div className="flex items-center px-3 pt-3 gap-1 border-b border-border/40">
-        <CanvasTab active={view === "graph"} onClick={() => onChangeView("graph")}>
-          Graph
-        </CanvasTab>
-        <CanvasTab active={view === "memory"} onClick={() => onChangeView("memory")}>
-          Memory
-        </CanvasTab>
-        <CanvasTab active={view === "trace"} onClick={() => onChangeView("trace")}>
-          Trace
-        </CanvasTab>
-        <CanvasTab active={view === "steps"} onClick={() => onChangeView("steps")}>
-          Steps
-        </CanvasTab>
-        <div className="flex-1" />
-        <button
-          onClick={onOpenSource}
-          className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-accent/40 mb-1"
-        >
-          @ {stepLocLabel}
-        </button>
-      </div>
-      <div className={isFlat ? "" : "p-4"}>
+    <div
+      className={cn(
+        "overflow-hidden",
+        isCanvas
+          ? ""
+          : "rounded-2xl border border-rule bg-paper"
+      )}
+    >
+      <div className={isFlat ? "" : isCanvas ? "" : "p-4"}>
         {view === "graph" && (
           <CFGCanvas
             parsed={parsed}
@@ -495,21 +483,5 @@ function CanvasCard({
         )}
       </div>
     </div>
-  );
-}
-
-function CanvasTab({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "h-9 px-3 -mb-px text-xs font-medium border-b-2 transition-colors",
-        active
-          ? "border-amber text-amber"
-          : "border-transparent text-muted-foreground hover:text-foreground"
-      )}
-    >
-      {children}
-    </button>
   );
 }

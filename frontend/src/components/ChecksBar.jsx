@@ -7,16 +7,14 @@ export function ChecksBar({ checks, onToggle, triggeredFlag, isFail }) {
   return (
     <div className="flex items-center gap-3 px-1">
       <div className="flex items-baseline gap-2 shrink-0">
-        <span className="text-xs text-muted-foreground">
-          checks
-        </span>
-        <span className="text-xs text-muted-foreground/70">
+        <span className="text-[11.5px] text-ink-muted">checks</span>
+        <span className="text-[11.5px] text-ink-muted/70">
           {onCount} / {CHECK_FLAGS.length} on
         </span>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-end flex-1">
+      <div className="flex flex-wrap gap-1.5 justify-end flex-1">
         {CHECK_FLAGS.map((f) => (
-          <Checkbox
+          <CheckPill
             key={f.key}
             label={f.label}
             checked={!!checks[f.key]}
@@ -31,44 +29,39 @@ export function ChecksBar({ checks, onToggle, triggeredFlag, isFail }) {
   );
 }
 
-function Checkbox({ label, checked, triggered, isFail, onToggle, title }) {
-  const accent = triggered && isFail ? "fail" : "amber";
+function CheckPill({ label, checked, triggered, isFail, onToggle, title }) {
+  const triggeredFail = triggered && isFail;
   return (
     <button
       onClick={onToggle}
       title={title}
       className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-medium transition-colors group",
-        triggered
-          ? accent === "fail"
-            ? "text-[var(--trace-fail)]"
-            : "text-amber"
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors",
+        triggeredFail
+          ? "border-[var(--state-failed)]/30 bg-[var(--state-failed)]/10 text-[var(--state-failed)]"
           : checked
-            ? "text-amber"
-            : "text-muted-foreground hover:text-foreground"
+            ? "border-brand/30 bg-brand/10 text-brand"
+            : "border-rule text-ink-muted hover:bg-ink/[0.03] hover:text-ink"
       )}
     >
       <span
         className={cn(
           "relative inline-flex items-center justify-center h-3 w-3 rounded-[3px] border transition-colors",
-          checked && triggered && accent === "fail" &&
-            "border-[var(--trace-fail)] bg-[var(--trace-fail)]",
-          checked &&
-            !(triggered && accent === "fail") &&
-            "border-amber bg-amber",
-          !checked && "border-muted-foreground/40 group-hover:border-foreground/60"
+          checked && triggeredFail && "border-[var(--state-failed)] bg-[var(--state-failed)]",
+          checked && !triggeredFail && "border-brand bg-brand",
+          !checked && "border-ink-muted/40"
         )}
       >
         {checked && (
-          <Check className="h-2.5 w-2.5 stroke-[3] text-background" />
+          <Check className="h-2.5 w-2.5 stroke-[3] text-paper" />
         )}
       </span>
       {label}
       {triggered && (
         <span
           className={cn(
-            "text-xs ml-1",
-            accent === "fail" ? "text-[var(--trace-fail)]" : "text-amber"
+            "ml-0.5 text-[11px]",
+            triggeredFail ? "text-[var(--state-failed)]" : "text-brand"
           )}
         >
           ↯ trace

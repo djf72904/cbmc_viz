@@ -39,6 +39,7 @@ export function saveHistoryItem({
   entry,
   unwind,
   exitCode,
+  stderr,
 }) {
   const items = safeRead();
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -60,6 +61,7 @@ export function saveHistoryItem({
     entry: entry ?? null,
     unwind: unwind ?? null,
     exitCode: exitCode ?? null,
+    stderr: stderr ?? null,
     sizeHint: approxBytes(traceStr) + approxBytes(sourceText ?? ""),
   };
 

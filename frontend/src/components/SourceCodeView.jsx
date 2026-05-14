@@ -4,10 +4,6 @@ import { buttonVariants } from "@/components/ui/button.jsx";
 import { tokenizeSource } from "@/lib/highlight.js";
 import { cn } from "@/lib/utils.js";
 
-/**
- * Renders the C/C++ source with shiki tokens. The line corresponding to the
- * current trace step is highlighted; all visited lines get a soft tint.
- */
 export function SourceCodeView({
   source,
   activeLine,
@@ -16,6 +12,7 @@ export function SourceCodeView({
   onUploadSource,
   className,
   emptyClassName,
+  failureLine,
 }) {
   const plainLines = useMemo(() => {
     if (!source?.text) return null;
@@ -59,16 +56,16 @@ export function SourceCodeView({
     return (
       <div
         className={cn(
-          "flex flex-col items-center justify-center px-8 py-12 text-center gap-3",
+          "flex flex-col items-center justify-center px-8 py-12 text-center gap-3 bg-card",
           emptyClassName
         )}
       >
-        <div className="h-12 w-12 rounded-2xl bg-accent/40 flex items-center justify-center">
-          <FileCode2 className="h-5 w-5 text-muted-foreground" />
+        <div className="h-12 w-12 rounded-full border border-rule bg-paper flex items-center justify-center">
+          <FileCode2 className="h-5 w-5 text-ink-muted" />
         </div>
         <div>
-          <p className="text-sm font-medium">No source loaded</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+          <p className="text-[13px] font-medium text-ink">No source loaded</p>
+          <p className="text-[12px] text-ink-muted mt-1 max-w-sm leading-relaxed">
             Upload the C/C++ file
             {meta?.file ? ` (${meta.file})` : ""} to view it inline with the
             current trace line highlighted.
@@ -101,13 +98,15 @@ export function SourceCodeView({
 
   const lines = tokens ?? plainLines.map((line) => [{ text: line, color: null }]);
   const activeNum = activeLine == null ? null : Number(activeLine);
+  const failureNum = failureLine == null ? null : Number(failureLine);
 
   return (
-    <div className={cn("overflow-auto bg-[#0d1117]", className)}>
-      <pre className="font-mono text-xs leading-relaxed py-2">
+    <div className={cn("overflow-auto bg-card", className)}>
+      <pre className="font-mono text-[12.5px] leading-relaxed py-2">
         {lines.map((line, i) => {
           const lineNo = i + 1;
           const isActive = lineNo === activeNum;
+          const isFailure = failureNum != null && lineNo === failureNum;
           const isTouched = linesTouched.has(lineNo);
           const tokensForLine = Array.isArray(line)
             ? line
@@ -118,26 +117,30 @@ export function SourceCodeView({
               ref={isActive ? activeRef : undefined}
               className={cn(
                 "grid grid-cols-[3.5rem_1fr] items-baseline border-l-2 transition-colors",
-                isActive
-                  ? "bg-amber/20 border-amber"
-                  : isTouched
-                    ? "bg-amber/5 border-amber/30"
-                    : "border-transparent"
+                isFailure
+                  ? "bg-[var(--state-failed)]/10 border-[var(--state-failed)]"
+                  : isActive
+                    ? "bg-brand/[0.08] border-brand"
+                    : isTouched
+                      ? "bg-brand/[0.04] border-brand/20"
+                      : "border-transparent"
               )}
             >
               <span
                 className={cn(
                   "text-right pr-3 select-none tabular-nums",
-                  isActive
-                    ? "text-amber font-semibold"
-                    : isTouched
-                      ? "text-amber/60"
-                      : "text-muted-foreground/40"
+                  isFailure
+                    ? "text-[var(--state-failed)] font-semibold"
+                    : isActive
+                      ? "text-brand font-semibold"
+                      : isTouched
+                        ? "text-brand/60"
+                        : "text-ink-muted/40"
                 )}
               >
                 {lineNo}
               </span>
-              <span className="whitespace-pre pr-4">
+              <span className="whitespace-pre pr-4 text-ink">
                 {tokensForLine.length === 0 ? (
                   <span> </span>
                 ) : (

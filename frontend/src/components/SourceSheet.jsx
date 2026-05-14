@@ -12,10 +12,6 @@ import { Button, buttonVariants } from "@/components/ui/button.jsx";
 import { SourceCodeView } from "@/components/SourceCodeView.jsx";
 import { cn } from "@/lib/utils.js";
 
-/**
- * Sliding sheet that displays the source code with the current trace line
- * highlighted. The user can upload the corresponding C/C++ source file.
- */
 export function SourceSheet({
   open,
   onOpenChange,
@@ -31,21 +27,17 @@ export function SourceSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        width="max-w-3xl"
-        onClose={() => onOpenChange(false)}
-      >
+      <SheetContent side="right" className="sm:max-w-3xl">
         <SheetHeader>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber/15 text-amber">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-brand/30 bg-brand/10 text-brand">
               <FileCode2 className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <SheetTitle className="truncate">
                 {source?.name ?? meta?.file ?? "Source"}
               </SheetTitle>
-              <SheetDescription className="font-mono text-xs truncate">
+              <SheetDescription className="font-mono truncate">
                 {meta?.fnName}() · line {activeLine ?? "?"}
               </SheetDescription>
             </div>
@@ -67,7 +59,6 @@ export function SourceSheet({
                 variant="ghost"
                 size="sm"
                 onClick={onSourceClear}
-                className="text-muted-foreground hover:text-foreground"
               >
                 <FileX2 className="h-3.5 w-3.5 mr-1.5" />
                 Clear
@@ -122,10 +113,10 @@ function Tab({ active, onClick, children }) {
     <button
       onClick={onClick}
       className={cn(
-        "h-7 px-3 rounded-md text-xs font-medium transition-colors",
+        "h-7 px-3 rounded-full text-[12px] font-medium transition-colors",
         active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          ? "bg-brand/10 text-brand border border-brand/30"
+          : "text-ink-muted border border-transparent hover:bg-ink/[0.04] hover:text-ink"
       )}
     >
       {children}
@@ -136,7 +127,7 @@ function Tab({ active, onClick, children }) {
 function StepView({ step }) {
   if (!step) {
     return (
-      <div className="p-8 text-center text-sm text-muted-foreground">
+      <div className="p-8 text-center text-[13px] text-ink-muted">
         No active step.
       </div>
     );
@@ -158,10 +149,10 @@ function StepView({ step }) {
         ]}
       />
       <div>
-        <div className="text-xs text-muted-foreground mb-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-2">
           Raw step
         </div>
-        <pre className="font-mono text-xs overflow-x-auto text-foreground/85">
+        <pre className="font-mono text-[12px] overflow-x-auto text-ink/85 rounded-lg border border-rule bg-paper p-3">
 {JSON.stringify(step, null, 2)}
         </pre>
       </div>
@@ -191,14 +182,14 @@ function TraceView({ meta }) {
 
 function KVTable({ rows }) {
   return (
-    <table className="w-full text-xs">
+    <table className="w-full text-[12px]">
       <tbody>
         {rows.map(([k, v], i) => (
-          <tr key={k + i} className="border-b border-border/30 last:border-0">
-            <td className="py-2 pr-4 text-muted-foreground font-medium text-xs w-32">
+          <tr key={k + i} className="border-b border-rule/60 last:border-0">
+            <td className="py-2 pr-4 text-ink-muted font-medium text-[11.5px] w-32">
               {k}
             </td>
-            <td className="py-2 font-mono text-foreground break-all">
+            <td className="py-2 font-mono text-ink break-all">
               {v}
             </td>
           </tr>

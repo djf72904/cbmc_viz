@@ -21,25 +21,23 @@ export function TraceControls({
   return (
     <div className="flex items-center gap-4 px-1 py-2">
       <div className="flex items-center gap-3 min-w-[180px]">
-        <div className="text-xs text-muted-foreground">
-          step
-        </div>
-        <div className="font-mono text-sm tabular-nums">
-          <span className="text-foreground">
+        <div className="text-[11.5px] text-ink-muted">step</div>
+        <div className="font-mono text-[13px] tabular-nums">
+          <span className="text-ink">
             {String(step + 1).padStart(2, "0")}
           </span>
-          <span className="text-muted-foreground">
+          <span className="text-ink-muted">
             {" "}
             / {String(total).padStart(2, "0")}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 h-1.5 rounded-full bg-border/60 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-ink/[0.06] overflow-hidden">
         <div
           className={cn(
             "h-full rounded-full transition-all duration-300",
-            isFail ? "bg-[var(--trace-fail)]" : "bg-amber"
+            isFail ? "bg-[var(--state-failed)]" : "bg-brand"
           )}
           style={{ width: `${pct}%` }}
         />
@@ -56,7 +54,7 @@ export function TraceControls({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
-          variant={atEnd ? "outline" : "default"}
+          variant={atEnd ? "outline" : "brand"}
           size="header"
           onClick={onPlayToggle}
           disabled={atEnd}
@@ -86,7 +84,6 @@ export function TraceControls({
           variant="ghost"
           size="header-icon"
           onClick={onReset}
-          className="text-muted-foreground hover:text-foreground"
           aria-label="Reset"
         >
           <RotateCcw className="h-4 w-4" />
@@ -94,7 +91,7 @@ export function TraceControls({
         <select
           value={speed}
           onChange={(e) => onSpeedChange(Number(e.target.value))}
-          className="h-8 rounded-[0.6rem] border border-border/60 bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background"
+          className="h-8 rounded-md border border-rule bg-paper px-2 text-[12px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/40"
         >
           <option value={1100}>0.5×</option>
           <option value={700}>1×</option>

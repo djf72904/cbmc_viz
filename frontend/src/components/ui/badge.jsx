@@ -2,22 +2,24 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils.js";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors",
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-tight transition-colors",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-foreground text-background",
-        secondary:
-          "border-transparent bg-accent text-foreground",
-        outline: "text-foreground border-border/60",
-        amber:
-          "border-amber/40 bg-amber/15 text-amber",
-        fail:
-          "border-[var(--trace-fail)]/40 bg-[var(--trace-fail-soft)] text-[var(--trace-fail)]",
-        ok: "border-[var(--trace-ok)]/40 bg-[var(--trace-ok)]/15 text-[var(--trace-ok)]",
-        muted:
-          "border-border/40 bg-surface text-muted-foreground",
+        default: "border-rule bg-paper text-ink",
+        muted: "border-rule/60 bg-ink/[0.03] text-ink-muted",
+        brand: "border-brand/30 bg-brand/10 text-brand",
+        ok: "border-[oklch(0.66_0.16_152/0.3)] bg-[oklch(0.66_0.16_152/0.12)] text-[oklch(0.42_0.16_152)]",
+        passed:
+          "border-[oklch(0.66_0.16_152/0.3)] bg-[oklch(0.66_0.16_152/0.12)] text-[oklch(0.42_0.16_152)]",
+        fail: "border-[var(--state-failed)]/30 bg-[var(--state-failed)]/10 text-[var(--state-failed)]",
+        rejected:
+          "border-[var(--state-failed)]/30 bg-[var(--state-failed)]/10 text-[var(--state-failed)]",
+        warn: "border-[var(--state-flagged)]/30 bg-[var(--state-flagged)]/12 text-[var(--state-flagged)]",
+        flagged:
+          "border-[var(--state-flagged)]/30 bg-[var(--state-flagged)]/12 text-[var(--state-flagged)]",
+        running:
+          "border-[var(--state-running)]/30 bg-[var(--state-running)]/10 text-[var(--state-running)]",
       },
     },
     defaultVariants: { variant: "default" },

@@ -6,7 +6,7 @@ export const Card = forwardRef(function Card({ className, ...props }, ref) {
     <div
       ref={ref}
       className={cn(
-        "rounded-2xl border border-border/50 bg-card text-card-foreground",
+        "rounded-xl border border-rule bg-card text-ink shadow-[0_1px_0_0_rgba(0,0,0,0.02)]",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ export const CardTitle = forwardRef(function CardTitle(
     <h3
       ref={ref}
       className={cn(
-        "text-xs font-semibold text-muted-foreground",
+        "text-xs font-semibold tracking-[-0.01em] text-ink-muted",
         className
       )}
       {...props}
